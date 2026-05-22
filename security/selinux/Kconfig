@@ -23,6 +23,20 @@ config SECURITY_SELINUX_BOOTPARAM
 
 	  If you are unsure how to answer this question, answer N.
 
+config SECURITY_SELINUX_CMDLINE_CONTROL
+	bool "NSA SELinux runtime command line control"
+	depends on SECURITY_SELINUX
+	default n
+	help
+	  This option allows runtime control of SELinux through the kernel
+	  command line. When enabled, the boot parameter
+	  "androidboot.selinux=permissive" will set SELinux to permissive
+	  mode instead of enforcing. Additionally, if the current process
+	  is "init", SELinux will also be set to permissive regardless of
+	  the command line setting.
+
+	  If you are unsure how to answer this question, answer N.
+
 config SECURITY_SELINUX_DISABLE
 	bool "NSA SELinux runtime disable"
 	depends on SECURITY_SELINUX

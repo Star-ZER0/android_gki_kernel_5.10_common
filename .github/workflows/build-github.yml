@@ -17,7 +17,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt update -y
-          sudo apt install git make ccache zip unzip bc libssl-dev
+          sudo apt install -y git make ccache zip unzip bc libssl-dev coreutils
 
       - name: Cache Toolchain
         uses: actions/cache@v4

@@ -19,15 +19,6 @@ jobs:
          sudo apt update -y
          sudo apt install -y git make ccache zip unzip bc libssl-dev coreutils
 
-      - name: Cache Toolchain
-        uses: actions/cache@v4
-        with:
-          path: |
-            clang-r416183b
-            gcc-aarch64
-            gcc-arm
-          key: toolchain-r416183b
-
       - name: Download Clang r416183b (Lineage GitHub Mirror)
         run: git clone --depth=1 https://github.com/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r416183b clang-r416183b
 
@@ -39,6 +30,16 @@ jobs:
 
       - name: Clone AnyKernel3
         run: git clone --depth=1 https://github.com/osm0sis/AnyKernel3 ak3
+
+      # 缓存步骤移至工具链全部下载完毕后，首次构建可正常缓存工具链
+      - name: Cache Toolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            clang-r416183b
+            gcc-aarch64
+            gcc-arm
+          key: toolchain-r416183b
 
       - name: Build Kernel (Lineage Mirror Toolchain)
         env:

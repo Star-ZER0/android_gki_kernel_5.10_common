@@ -41,19 +41,28 @@ jobs:
           ARCH: arm64
           SUBARCH: arm64
         run: |
-          echo "=== PATH Debug ==="
+          echo "=== 设置 PATH ==="
           export PATH="\( {{ github.workspace }}/clang-r416183b/bin: \){{ github.workspace }}/gcc-aarch64/bin:${{ github.workspace }}/gcc-arm/bin:/usr/bin:/usr/sbin:/bin:$PATH"
           echo $PATH
-          which make || echo "make not found!"
-          which clang || echo "clang not found!"
 
-          ARGS="-j$(nproc) ARCH=arm64 SUBARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-android- CROSS_COMPILE_ARM32=arm-linux-androideabi- CLANG_TRIPLE=aarch64-linux-gnu-"
+          # 关键调试：查看工具链里到底有哪些 ld
+          echo "=== 查找 ld 文件 ==="
+          ls -l ${{ github.workspace }}/gcc-aarch64/bin/*ld* || echo "No ld found!"
+
+          # 赋予执行权限（经常出问题）
+          chmod -R +x ${{ github.workspace }}/gcc-aarch64/bin/ 2>/dev/null || true
+
+          ARGS="-j$(nproc) ARCH=arm64 SUBARCH=arm64 O=out \
+            CROSS_COMPILE=aarch64-linux-android- \
+            CROSS_COMPILE_ARM32=arm-linux-androideabi- \
+            CLANG_TRIPLE=aarch64-linux-gnu-"
 
           make clean || true
           make mrproper || true
           rm -rf out && mkdir -p out
 
-          make CC="ccache clang" $ARGS gki_defconfig
+          echo "=== 开始配置 ==="
+          make CC="ccache clang" $ARGS gki_defconfig 2>&1 | tee config.log
           make CC="ccache clang" $ARGS olddefconfig
           make CC="ccache clang" $ARGS prepare
           make CC="ccache clang" $ARGS 2>&1 | tee kernel_build.log

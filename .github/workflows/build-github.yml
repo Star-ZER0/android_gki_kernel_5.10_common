@@ -16,8 +16,8 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          sudo apt update -y
-          sudo apt install -y git make ccache zip unzip bc libssl-dev coreutils
+           sudo apt update -y
+           sudo apt install -y git make ccache zip unzip bc libssl-dev coreutils
 
       - name: Download Clang r416183b (Lineage GitHub Mirror)
         run: git clone --depth=1 https://github.com/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r416183b clang-r416183b

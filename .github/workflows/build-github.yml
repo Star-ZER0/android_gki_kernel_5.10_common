@@ -47,13 +47,17 @@ jobs:
           KD: gki_defconfig
           PATH: ${{ github.workspace }}/clang-r416183b/bin:${{ github.workspace }}/gcc-aarch64/bin:${{ github.workspace }}/gcc-arm/bin:$PATH
         run: |
-          args="-j$(nproc) ARCH=arm64 SUBARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-android- CROSS_COMPILE_ARM32=arm-linux-androideabi- CLANG_TRIPLE=aarch64-linux-gnu-"
+          # 单独获取CPU核心数，规避内嵌$()解析报错
+          CPU_CORES=$(nproc)
+          ARGS="-j${CPU_CORES} ARCH=arm64 SUBARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-android- CROSS_COMPILE_ARM32=arm-linux-androideabi- CLANG_TRIPLE=aarch64-linux-gnu-"
+          
           make clean && make mrproper
           rm -rf out && mkdir -p out
-          make CC="ccache clang" $args $KD
-          make CC="ccache clang" $args olddefconfig
-          make CC="ccache clang" $args prepare
-          make CC="ccache clang" $args 2>&1 | tee kernel_build.log
+          
+          make CC="ccache clang" $ARGS $KD
+          make CC="ccache clang" $ARGS olddefconfig
+          make CC="ccache clang" $ARGS prepare
+          make CC="ccache clang" $ARGS 2>&1 | tee kernel_build.log
 
       - name: Package & Slim AnyKernel Zip
         run: |

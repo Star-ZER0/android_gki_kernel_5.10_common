@@ -1,0 +1,75 @@
+name: Google AOSP Source Build GKI5.10
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout kernel source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install system dependencies
+        run: |
+          sudo apt update -y
+          sudo apt install git make ccache zip unzip bc libssl-dev
+
+      - name: Cache Toolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            clang-r416183b
+            gcc-aarch64
+            gcc-arm
+          key: toolchain-r416183b
+
+      - name: Download AOSP Official Clang
+        run: |
+          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 clang-r416183b
+          cd clang-r416183b
+          git checkout clang-r416183b
+
+      - name: Download AOSP aarch64 GCC4.9
+        run: git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 gcc-aarch64
+
+      - name: Download AOSP arm GCC4.9
+        run: git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 gcc-arm
+
+      - name: Clone AnyKernel3
+        run: git clone --depth=1 https://github.com/osm0sis/AnyKernel3 ak3
+
+      - name: Build Kernel (Official Toolchain)
+        env:
+          ARCH: arm64
+          SUBARCH: arm64
+          KD: gki_defconfig
+          PATH: ${{ github.workspace }}/clang-r416183b/bin:${{ github.workspace }}/gcc-aarch64/bin:${{ github.workspace }}/gcc-arm/bin:$PATH
+        run: |
+          args="-j$(nproc) ARCH=arm64 SUBARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-android- CROSS_COMPILE_ARM32=arm-linux-androideabi- CLANG_TRIPLE=aarch64-linux-gnu-"
+          make clean && make mrproper
+          rm -rf out && mkdir -p out
+          make CC="ccache clang" $args $KD
+          make CC="ccache clang" $args olddefconfig
+          make CC="ccache clang" $args prepare
+          make CC="ccache clang" $args 2>&1 | tee kernel_build.log
+
+      - name: Package & Slim AnyKernel Zip
+        run: |
+          cp out/arch/arm64/boot/Image ak3/
+          cd ak3
+          rm -rf tools/lptools_static tools/htools_static modules/system/lib/placeholder patch ramdisk
+          zip -r -9 kernel-$(git rev-parse --short HEAD).zip .
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: GKI5.10-GoogleSource-${{ github.sha }}
+          path: |
+            ak3/*.zip
+            kernel_build.log

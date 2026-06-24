@@ -1,91 +1,59 @@
-name: GitHub Lineage Mirror Build GKI5.10
+name: Build GKI 5.10 Kernel
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-      - master
+    branches: [ main, master ]
 
 jobs:
-  compile:
+  build:
     runs-on: ubuntu-22.04
-
     steps:
-      - name: Checkout kernel source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      - name: Install system dependencies
+      - name: Install Dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y build-essential git make ccache zip unzip bc \
-            libssl-dev coreutils libncurses5 libtinfo5
-        shell: bash
+          sudo apt-get install -y build-essential bc bison flex libssl-dev ccache zip unzip libncurses5 libtinfo5
 
-      - name: Download Clang r416183b (Lineage GitHub Mirror)
-        run: git clone --depth=1 https://github.com/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r416183b clang-r416183b
-
-      - name: Download aarch64 GCC4.9 (Lineage GitHub Mirror)
-        run: git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 gcc-aarch64
-
-      - name: Download arm GCC4.9 (Lineage GitHub Mirror)
-        run: git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 gcc-arm
+      - name: Setup Toolchains
+        run: |
+          git clone --depth=1 https://github.com/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r416183b clang
+          git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 gcc64
+          git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 gcc32
+          
+          chmod -R +x clang/bin gcc64/bin gcc32/bin
 
       - name: Clone AnyKernel3
         run: git clone --depth=1 https://github.com/osm0sis/AnyKernel3 ak3
 
-      - name: Build Kernel (Lineage Mirror Toolchain)
-        env:
-          ARCH: arm64
-          SUBARCH: arm64
+      - name: Build Kernel
         run: |
-          echo "=== 设置 PATH ==="
-          export PATH="\( {{ github.workspace }}/clang-r416183b/bin: \){{ github.workspace }}/gcc-aarch64/bin:${{ github.workspace }}/gcc-arm/bin:/usr/bin:/usr/sbin:/bin:$PATH"
-          echo $PATH
-
-          # 关键调试：查看工具链里到底有哪些 ld
-          echo "=== 查找 ld 文件 ==="
-          ls -l ${{ github.workspace }}/gcc-aarch64/bin/*ld* || echo "No ld found!"
-
-          # 赋予执行权限（经常出问题）
-          chmod -R +x ${{ github.workspace }}/gcc-aarch64/bin/ 2>/dev/null || true
-
-          ARGS="-j$(nproc) ARCH=arm64 SUBARCH=arm64 O=out \
+          export PATH="\( (pwd)/clang/bin: \)(pwd)/gcc64/bin:$(pwd)/gcc32/bin:/usr/bin:$PATH"
+          echo "=== Toolchain Debug ==="
+          ls -l gcc64/bin/*ld* || true
+          
+          make clean && rm -rf out && mkdir out
+          
+          ARGS="-j$(nproc) ARCH=arm64 O=out \
             CROSS_COMPILE=aarch64-linux-android- \
             CROSS_COMPILE_ARM32=arm-linux-androideabi- \
-            CLANG_TRIPLE=aarch64-linux-gnu-"
-
-          make clean || true
-          make mrproper || true
-          rm -rf out && mkdir -p out
-
-          echo "=== 开始配置 ==="
-          make CC="ccache clang" $ARGS gki_defconfig 2>&1 | tee config.log
-          make CC="ccache clang" $ARGS olddefconfig
-          make CC="ccache clang" $ARGS prepare
-          make CC="ccache clang" $ARGS 2>&1 | tee kernel_build.log
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            LD=aarch64-linux-android-ld"
+          
+          make CC=clang $ARGS gki_defconfig
+          make CC=clang $ARGS olddefconfig
+          make CC=clang \( ARGS -j \)(nproc) 2>&1 | tee build.log
         shell: bash
 
-      - name: Package & Slim AnyKernel Zip
+      - name: Package
         run: |
-          if [ -f out/arch/arm64/boot/Image ]; then
-            cp out/arch/arm64/boot/Image ak3/
-            cd ak3
-            rm -rf tools/lptools_static tools/htools_static modules/system/lib/placeholder patch ramdisk
-            zip -r -9 kernel-$(git rev-parse --short HEAD).zip .
-            echo "Kernel zip packaged successfully."
-          else
-            echo "Error: Image not found! Build failed."
-            exit 1
-          fi
-        shell: bash
+          cp out/arch/arm64/boot/Image.gz-dtb ak3/ 2>/dev/null || cp out/arch/arm64/boot/Image ak3/
+          cd ak3 && zip -r9 kernel.zip *
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: GKI5.10-GitHubMirror-${{ github.sha }}
-          path: |
-            ak3/*.zip
-            kernel_build.log
+          name: Kernel-GKI5.10
+          path: ak3/*.zip

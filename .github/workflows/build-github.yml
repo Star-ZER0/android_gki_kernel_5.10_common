@@ -9,7 +9,7 @@ on:
 
 jobs:
   compile:
-    runs-on: ubuntu-22.04          # 推荐使用 22.04，更稳定
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout kernel source
@@ -20,9 +20,8 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y build-essential \
-            git make ccache zip unzip bc libssl-dev coreutils \
-            libncurses5 libtinfo5
+          sudo apt-get install -y build-essential git make ccache zip unzip bc \
+            libssl-dev coreutils libncurses5 libtinfo5
         shell: bash
 
       - name: Download Clang r416183b (Lineage GitHub Mirror)
@@ -41,9 +40,9 @@ jobs:
         env:
           ARCH: arm64
           SUBARCH: arm64
-          PATH: \( {{ github.workspace }}/clang-r416183b/bin: \){{ github.workspace }}/gcc-aarch64/bin:${{ github.workspace }}/gcc-arm/bin:/usr/bin:/usr/sbin:/bin:$PATH
         run: |
           echo "=== PATH Debug ==="
+          export PATH="\( {{ github.workspace }}/clang-r416183b/bin: \){{ github.workspace }}/gcc-aarch64/bin:${{ github.workspace }}/gcc-arm/bin:/usr/bin:/usr/sbin:/bin:$PATH"
           echo $PATH
           which make || echo "make not found!"
           which clang || echo "clang not found!"
@@ -81,12 +80,3 @@ jobs:
           path: |
             ak3/*.zip
             kernel_build.log
-
-      - name: Cache Toolchain
-        uses: actions/cache@v4
-        with:
-          path: |
-            clang-r416183b
-            gcc-aarch64
-            gcc-arm
-          key: toolchain-r416183b-${{ runner.os }}

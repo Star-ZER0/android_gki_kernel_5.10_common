@@ -32,9 +32,7 @@ jobs:
       - name: Download AOSP Official Clang
         run: |
           git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 clang-r416183b
-          cd clang-r416183b
-          git checkout clang-r416183b
-
+          
       - name: Download AOSP aarch64 GCC4.9
         run: git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 gcc-aarch64
 

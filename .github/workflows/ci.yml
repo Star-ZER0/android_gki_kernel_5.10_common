@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-kernel:
+    name: Build GKI 5.10 Kernel
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Build Kernel
+        uses: dabao1955/kernel_build_action@main
+        with:
+          kernel-url: https://github.com/yhys233/android_gki_kernel_5.10_common
+          kernel-branch: android12-5.10-2026-04_r1   # 默认分支
+          config: gki_defconfig
+          arch: arm64
+          aosp-gcc: true
+          aosp-clang: true
+          android-version: 12
+          aosp-clang-version: r416183b
+          anykernel3: true
+          release: true
+          access-token: ${{ secrets.GITHUB_TOKEN }}
+          use-ccache: true
+          clean-build: true

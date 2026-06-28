@@ -24,8 +24,7 @@ jobs:
           anykernel3: true
           release: true
           access-token: ${{ secrets.GITHUB_TOKEN }}
-          extra-make-args: '["TRIM_UNUSED_KSYMS=y"]'
-
+          
       # ========== 自动生成 abi_symbollist.raw ==========
       - name: Generate abi_symbollist.raw
         run: |

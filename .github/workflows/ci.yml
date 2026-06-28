@@ -44,3 +44,11 @@ jobs:
           name: abi_symbollist-generated
           path: kernel/kernel/out/abi_symbollist.raw
           retention-days: 7
+
+      - name: Upload full out directory (temporary)
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-out-full-${{ github.sha }}
+          path: kernel/kernel/out/
+          retention-days: 3
+          # 注意：out 目录比较大，上传会比较慢

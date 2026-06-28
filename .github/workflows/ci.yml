@@ -25,4 +25,4 @@ jobs:
           anykernel3: true
           release: true
           access-token: ${{ secrets.GITHUB_TOKEN }}
-          extra-make-args: '["TRIM_UNUSED_KSYMS=y"]'
+          extra-make-args: '["TRIM_UNUSED_KSYMS=y", "UNUSED_KSYMS_WHITELIST=arch/arm64/configs/abi_symbollist.raw"]'

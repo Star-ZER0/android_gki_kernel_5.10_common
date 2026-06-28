@@ -66,10 +66,31 @@ jobs:
           make CC="ccache clang" -j$(nproc) O=out gki_defconfig
           make CC="ccache clang" -j$(nproc) O=out olddefconfig prepare
 
-          make CC="ccache clang" -j$(nproc) O=out 2>&1 | tee ../build.log
+          make CC="ccache clang" LD=ld.lld -j$(nproc) O=out 2>&1 | tee ../build.log
 
-      - name: Upload build log
+      - name: Package AnyKernel3
+        run: |
+          git clone --depth=1 https://github.com/osm0sis/AnyKernel3 AnyKernel3
+          cp kernel/out/arch/arm64/boot/Image.gz AnyKernel3/
+          cd AnyKernel3
+          rm -rf .git README.md LICENSE
+          zip -r9 ../GKI5.10-diting.zip .
+
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: build-log
-          path: build.log
+          name: GKI5.10-diting
+          path: |
+            GKI5.10-diting.zip
+            build.log
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: diting-${{ github.run_number }}
+          name: GKI 5.10 diting Build #${{ github.run_number }}
+          files: |
+            GKI5.10-diting.zip
+            build.log
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

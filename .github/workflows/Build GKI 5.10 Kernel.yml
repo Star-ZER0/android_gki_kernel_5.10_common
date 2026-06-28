@@ -1,4 +1,4 @@
-name: Build GKI 5.10 手动构建（纯Clang）
+name: Build GKI 5.10 Kernel
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     env:
       ACTIONS_RUNNER_DEBUG: true
       ACTIONS_STEP_DEBUG: true
@@ -55,6 +55,7 @@ jobs:
           cd kernel
           export ARCH=arm64
           export SUBARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
           export CLANG_TRIPLE=aarch64-linux-gnu-
           export LLVM=1
           export LLVM_IAS=1
@@ -72,20 +73,3 @@ jobs:
         with:
           name: build-log
           path: build.log
-
-      - name: Package AnyKernel3
-        run: |
-          git clone --depth=1 https://github.com/osm0sis/AnyKernel3 AnyKernel3
-          cp kernel/out/arch/arm64/boot/Image.gz AnyKernel3/
-          cd AnyKernel3 && rm -rf .git README.md LICENSE && zip -r9 ../GKI5.10-diting-pureclang.zip .
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: pureclang-${{ github.run_number }}
-          name: GKI 5.10 Pure Clang Build
-          files: |
-            GKI5.10-diting-pureclang.zip
-            build.log
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -25,13 +25,25 @@ jobs:
             binutils git make bc bison openssl curl zip kmod cpio flex \
             libelf-dev libssl-dev libtfm-dev libc6-dev device-tree-compiler \
             ca-certificates python3 xz-utils aria2 build-essential ccache pigz \
-            parallel jq opam libpcre3-dev
+            parallel jq opam libpcre3-dev wget
 
-      - name: Download AOSP Clang r416183b
+      - name: Download AOSP Clang r416183b (curl + wget fallback)
         run: |
           mkdir -p $HOME/clang
-          curl -L https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r416183b.tar.gz \
-            | tar -xz -C $HOME/clang --warning=no-unknown-keyword
+          cd $HOME/clang
+
+          echo ">>> 尝试使用 curl 下载 clang-r416183b..."
+          if curl -L --fail --silent --show-error \
+            https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android12-release/clang-r416183b.tar.gz \
+            | tar -xz --warning=no-unknown-keyword; then
+            echo ">>> ✅ curl 下载并解压成功"
+          else
+            echo ">>> ❌ curl 失败，尝试使用 wget..."
+            wget -qO- \
+              https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android12-release/clang-r416183b.tar.gz \
+              | tar -xz --warning=no-unknown-keyword
+            echo ">>> ✅ wget 下载并解压完成"
+          fi
 
       - name: Download AOSP GCC 4.9
         run: |

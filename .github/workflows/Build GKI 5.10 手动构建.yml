@@ -71,9 +71,7 @@ jobs:
           make CC="ccache clang" -j$(nproc) O=out gki_diting_defconfig
 
           make CC="ccache clang" -j$(nproc) O=out \
-            CONFIG_TRIM_UNUSED_KSYMS=y \
-            UNUSED_KSYMS_WHITELIST=arch/arm64/configs/abi_symbollist.raw \
-            olddefconfig prepare
+                 olddefconfig prepare
 
           make CC="ccache clang" -j$(nproc) O=out 2>&1 | tee ../build.log
 
@@ -82,10 +80,6 @@ jobs:
         with:
           name: build-log
           path: build.log
-
-      - name: Strip Image
-        run: |
-          $HOME/clang/bin/llvm-strip --strip-all kernel/out/arch/arm64/boot/Image
 
       - name: Package AnyKernel3
         run: |

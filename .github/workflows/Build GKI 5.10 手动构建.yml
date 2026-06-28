@@ -1,4 +1,4 @@
-name: Build GKI 5.10 手动构建
+name: Build GKI 5.10 手动构建（纯Clang）
 
 on:
   workflow_dispatch:
@@ -27,9 +27,9 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install --no-install-recommends -y \
             binutils git make bc bison openssl curl zip kmod cpio flex \
-            libelf-dev libssl-dev libtfm-dev libc6-dev device-tree-compiler \
+            libelf-dev libssl-dev libc6-dev device-tree-compiler \
             ca-certificates python3 xz-utils aria2 build-essential ccache pigz \
-            parallel jq opam libpcre3-dev wget
+            parallel jq wget
 
       - name: Download AOSP Clang r416183b
         run: |
@@ -45,15 +45,9 @@ jobs:
             echo ">>> ✅ wget 下载成功"
           fi
 
-      - name: Download AOSP GCC 4.9
+      - name: Build Kernel (纯 Clang + LLD)
         run: |
-          git clone --depth=1 -b android12-release https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 $HOME/gcc-64
-          git clone --depth=1 -b android12-release https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 $HOME/gcc-32
-
-      - name: Build Kernel
-        run: |
-          # 正确追加工具链路径（不要覆盖整个 PATH）
-          export PATH="$HOME/clang/bin:$HOME/gcc-64/bin:$HOME/gcc-32/bin:$PATH"
+          export PATH="$HOME/clang/bin:$PATH"
 
           echo "=== 当前 PATH ==="
           echo $PATH
@@ -61,17 +55,15 @@ jobs:
           cd kernel
           export ARCH=arm64
           export SUBARCH=arm64
-          export CROSS_COMPILE=aarch64-linux-android-
-          export CROSS_COMPILE_ARM32=arm-linux-androideabi-
           export CLANG_TRIPLE=aarch64-linux-gnu-
+          export LLVM=1
+          export LLVM_IAS=1
 
           make clean && make mrproper
           rm -rf out && mkdir -p out
 
           make CC="ccache clang" -j$(nproc) O=out gki_defconfig
-
-          make CC="ccache clang" -j$(nproc) O=out \
-                 olddefconfig prepare
+          make CC="ccache clang" -j$(nproc) O=out olddefconfig prepare
 
           make CC="ccache clang" -j$(nproc) O=out 2>&1 | tee ../build.log
 
@@ -85,15 +77,15 @@ jobs:
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3 AnyKernel3
           cp kernel/out/arch/arm64/boot/Image.gz AnyKernel3/
-          cd AnyKernel3 && rm -rf .git README.md LICENSE && zip -r9 ../GKI5.10-diting-stripped.zip .
+          cd AnyKernel3 && rm -rf .git README.md LICENSE && zip -r9 ../GKI5.10-diting-pureclang.zip .
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: custom-${{ github.run_number }}
-          name: GKI 5.10 Custom Build
+          tag_name: pureclang-${{ github.run_number }}
+          name: GKI 5.10 Pure Clang Build
           files: |
-            GKI5.10-diting-stripped.zip
+            GKI5.10-diting-pureclang.zip
             build.log
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

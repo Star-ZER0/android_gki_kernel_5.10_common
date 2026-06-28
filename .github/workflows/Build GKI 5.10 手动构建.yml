@@ -68,7 +68,7 @@ jobs:
           make clean && make mrproper
           rm -rf out && mkdir -p out
 
-          make CC="ccache clang" -j$(nproc) O=out gki_diting_defconfig
+          make CC="ccache clang" -j$(nproc) O=out gki_defconfig
 
           make CC="ccache clang" -j$(nproc) O=out \
                  olddefconfig prepare

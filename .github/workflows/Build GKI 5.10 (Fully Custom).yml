@@ -1,4 +1,4 @@
-name: Build GKI 5.10 (Stable Custom)
+name: Build GKI 5.10 (Stable Custom + Debug)
 
 on:
   workflow_dispatch:
@@ -9,6 +9,10 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    env:
+      ACTIONS_RUNNER_DEBUG: true      # ← 开启 Runner 诊断日志
+      ACTIONS_STEP_DEBUG: true        # ← 开启 Step 详细日志
+
     steps:
       - name: Checkout kernel source
         uses: actions/checkout@v4
@@ -18,7 +22,6 @@ jobs:
           path: kernel
           fetch-depth: 1
 
-      # 使用和 dabao1955/action 几乎一致的依赖安装方式
       - name: Install system dependencies
         run: |
           sudo apt-get update -y

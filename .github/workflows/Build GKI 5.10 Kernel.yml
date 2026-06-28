@@ -27,6 +27,6 @@ jobs:
           access-token: ${{ secrets.GITHUB_TOKEN }}
 
           # === 新增下面这一段 ===
-          extra-make-args: '["CONFIG_TRIM_UNUSED_KSYMS=y"]'
+          extra-make-args: '["CONFIG_TRIM_UNUSED_KSYMS=y", "UNUSED_KSYMS_WHITELIST=arch/arm64/configs/abi_symbollist.raw"]'
           use-ccache: true
           clean-build: true

@@ -9,8 +9,7 @@ permissions:
 jobs:
   build-kernel:
     name: Build GKI 5.10 Kernel
-    runs-on: ubuntu-24.04
-
+    runs-on: ubuntu-22.04
     steps:
       - name: Build Kernel
         uses: dabao1955/kernel_build_action@main
@@ -26,5 +25,4 @@ jobs:
           anykernel3: true
           release: true
           access-token: ${{ secrets.GITHUB_TOKEN }}
-          use-ccache: true
-          clean-build: true
+          extra-make-args: '["TRIM_UNUSED_KSYMS=y"]'

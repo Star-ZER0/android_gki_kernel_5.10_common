@@ -1,4 +1,4 @@
-name: Beta Build GKI 5.10 Kernel
+name: Build GKI 5.10 Kernel (Custom with Strip)
 
 on:
   workflow_dispatch:
@@ -7,8 +7,8 @@ permissions:
   contents: write
 
 jobs:
-  build-kernel:
-    name: Build GKI 5.10 Kernel
+  build:
+    name: Build + Strip + Package
     runs-on: ubuntu-22.04
     steps:
       - name: Build Kernel
@@ -22,7 +22,50 @@ jobs:
           aosp-clang: true
           android-version: 12
           aosp-clang-version: r416183b
-          anykernel3: true
-          release: true
-          access-token: ${{ secrets.GITHUB_TOKEN }}
-          extra-make-args: '["TRIM_UNUSED_KSYMS=y", "UNUSED_KSYMS_WHITELIST=arch/arm64/configs/abi_symbollist.raw"]'
+          anykernel3: false          # 关闭自动打包，我们自己来
+          release: false
+          extra-make-args: '["CONFIG_TRIM_UNUSED_KSYMS=y", "UNUSED_KSYMS_WHITELIST=arch/arm64/configs/abi_symbollist.raw"]'
+
+      - name: Strip Image
+        run: |
+          CLANG_STRIP="${{ github.workspace }}/clang/bin/llvm-strip"
+          IMAGE="kernel/kernel/out/arch/arm64/boot/Image"
+
+          if [ -f "$IMAGE" ]; then
+            echo "=== Before strip ==="
+            ls -lh "$IMAGE"
+
+            $CLANG_STRIP --strip-all "$IMAGE"
+
+            echo "=== After strip ==="
+            ls -lh "$IMAGE"
+          else
+            echo "Image not found!"
+            exit 1
+          fi
+
+      - name: Package AnyKernel3
+        run: |
+          git clone --depth=1 https://github.com/osm0sis/AnyKernel3 AnyKernel3
+          cd AnyKernel3
+
+          # 复制 strip 后的 Image
+          cp ../kernel/kernel/out/arch/arm64/boot/Image .
+          cp ../kernel/kernel/out/arch/arm64/boot/Image.gz .
+
+          # 打包
+          zip -r9 ../AnyKernel3-flasher.zip . -x ".git/*" "README.md" "LICENSE"
+
+          echo "=== Final package size ==="
+          ls -lh ../AnyKernel3-flasher.zip
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.run_number }}-stripped
+          name: GKI 5.10 Kernel (Stripped)
+          files: AnyKernel3-flasher.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

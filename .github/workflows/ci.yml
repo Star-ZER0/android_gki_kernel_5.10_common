@@ -8,9 +8,7 @@ permissions:
 
 jobs:
   build-kernel:
-    name: Build GKI 5.10 Kernel
     runs-on: ubuntu-24.04
-
     steps:
       - name: Build Kernel
         uses: dabao1955/kernel_build_action@main
@@ -26,5 +24,23 @@ jobs:
           anykernel3: true
           release: true
           access-token: ${{ secrets.GITHUB_TOKEN }}
-          use-ccache: true
-          clean-build: true
+          extra-make-args: '["TRIM_UNUSED_KSYMS=y"]'
+
+      # ========== 自动生成 abi_symbollist.raw ==========
+      - name: Generate abi_symbollist.raw
+        run: |
+          cd kernel/kernel
+          OUT=out
+
+          echo "Generating abi_symbollist.raw from built vmlinux..."
+          nm -S "${OUT}/vmlinux" 2>/dev/null | grep ' T ' | awk '{print $3}' | sort -u > "${OUT}/abi_symbollist.raw" || true
+
+          echo "Generated $(wc -l < ${OUT}/abi_symbollist.raw) symbols"
+          ls -lh ${OUT}/abi_symbollist.raw
+
+      - name: Upload generated abi_symbollist.raw
+        uses: actions/upload-artifact@v4
+        with:
+          name: abi_symbollist-generated
+          path: kernel/kernel/out/abi_symbollist.raw
+          retention-days: 7

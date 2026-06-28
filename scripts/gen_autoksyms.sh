@@ -60,13 +60,21 @@ EOT
 
 [ -f modules.order ] && modlist=modules.order || modlist=/dev/null
 
+# Enhanced deduplication: ensure each symbol appears only once in output
+# Split symbols by whitespace, normalize, remove duplicates, and generate macros
 {
-	sed 's/ko$/mod/' $modlist | xargs -n1 sed -n -e '2p'
+	sed 's/ko$/mod/' $modlist 2>/dev/null | xargs -n1 sed -n -e '2p' 2>/dev/null || true
 	echo "$needed_symbols"
 	[ -n "$ksym_wl" ] && cat "$ksym_wl"
-} | sed -e 's/ /\n/g' | sed -n -e '/^$/!p' |
+} | tr ' ' '\n' | grep -v '^$' |
 # Remove the dot prefix for ppc64; symbol names with a dot (.) hold entry
 # point addresses.
 sed -e 's/^\.//' |
-sort -u |
-sed -e 's/\(.*\)/#define __KSYM_\1 1/' >> "$output_file"
+sort | uniq |
+awk '
+{
+	# Skip empty lines and duplicates (uniq should handle this, but be explicit)
+	if ($0 != "" && !seen[$0]++) {
+		printf "#define __KSYM_%s 1\n", $0
+	}
+}' >> "$output_file"

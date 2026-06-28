@@ -10,6 +10,28 @@ jobs:
   build-kernel:
     runs-on: ubuntu-24.04
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clean build cache and generated files
+        run: |
+          echo "Cleaning previous build artifacts..."
+          if [ -d "kernel/kernel" ]; then
+            cd kernel/kernel
+            make mrproper 2>/dev/null || true
+            make clean 2>/dev/null || true
+            rm -rf .config
+            rm -rf .version
+            rm -rf include/generated/autoksyms.h
+            rm -rf include/generated/autoconf.h
+            rm -rf include/config/
+            rm -rf .tmp_versions
+            echo "Build cache cleaned successfully"
+            cd ../..
+          fi
+
       - name: Build Kernel
         uses: dabao1955/kernel_build_action@main
         with:

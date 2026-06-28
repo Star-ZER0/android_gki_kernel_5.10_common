@@ -16,8 +16,8 @@ jobs:
         uses: dabao1955/kernel_build_action@main
         with:
           kernel-url: https://github.com/yhys233/android_gki_kernel_5.10_common
-          kernel-branch: android12-5.10-2026-04_r1   # 默认分支
-          config: gki_defconfig
+          kernel-branch: android12-5.10-2026-04_r1
+          config: gki_diting_defconfig
           arch: arm64
           aosp-gcc: true
           aosp-clang: true

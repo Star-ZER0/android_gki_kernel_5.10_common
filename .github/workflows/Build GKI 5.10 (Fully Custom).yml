@@ -1,4 +1,4 @@
-name: Build GKI 5.10 (Stable Custom + Debug)
+name: Build GKI 5.10 手动构建
 
 on:
   workflow_dispatch:
@@ -10,8 +10,8 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     env:
-      ACTIONS_RUNNER_DEBUG: true      # ← 开启 Runner 诊断日志
-      ACTIONS_STEP_DEBUG: true        # ← 开启 Step 详细日志
+      ACTIONS_RUNNER_DEBUG: true
+      ACTIONS_STEP_DEBUG: true
 
     steps:
       - name: Checkout kernel source
@@ -51,9 +51,13 @@ jobs:
           git clone --depth=1 -b android12-release https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 $HOME/gcc-32
 
       - name: Build Kernel
-        env:
-          PATH: $HOME/clang/bin:$HOME/gcc-64/bin:$HOME/gcc-32/bin:$PATH
         run: |
+          # 正确追加工具链路径（不要覆盖整个 PATH）
+          export PATH="$HOME/clang/bin:$HOME/gcc-64/bin:$HOME/gcc-32/bin:$PATH"
+
+          echo "=== 当前 PATH ==="
+          echo $PATH
+
           cd kernel
           export ARCH=arm64
           export SUBARCH=arm64

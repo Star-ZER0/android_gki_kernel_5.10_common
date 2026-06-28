@@ -25,3 +25,8 @@ jobs:
           anykernel3: true
           release: true
           access-token: ${{ secrets.GITHUB_TOKEN }}
+
+          # === 新增下面这一段 ===
+          extra-make-args: '["CONFIG_TRIM_UNUSED_KSYMS=y"]'
+          use-ccache: true
+          clean-build: true

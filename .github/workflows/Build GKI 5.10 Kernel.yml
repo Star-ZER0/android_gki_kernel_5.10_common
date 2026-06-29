@@ -66,8 +66,8 @@ jobs:
           make CC="ccache clang" -j$(nproc) O=out gki_defconfig
           make CC="ccache clang" -j$(nproc) O=out olddefconfig prepare
 
-          make CC="ccache clang" LD=ld.lld LOCALVERSION="-android12-\( {{ github.run_number }}" -j \)(nproc) O=out 2>&1 | tee ../build.log
-
+          make CC="ccache clang" LD=ld.lld LOCALVERSION="-android12-9-${{ github.run_number }}" -j$(nproc) O=out 2>&1 | tee ../build.log
+          
       - name: Generate abi_symbollist.raw（内核自带脚本）
         run: |
           cd kernel

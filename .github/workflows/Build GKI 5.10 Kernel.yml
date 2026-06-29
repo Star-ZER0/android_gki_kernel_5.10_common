@@ -1,4 +1,4 @@
-name: Build GKI 5.10 Kernel
+name: Build GKI 5.10 Kernel Available
 
 on:
   workflow_dispatch:

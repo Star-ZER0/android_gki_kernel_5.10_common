@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: yhys233/android_gki_kernel_5.10_common
-          ref: android12-5.10-2026-04_r1_Optimize
+          ref: android12-5.10-2026-04_r1
           path: kernel
           fetch-depth: 1
 

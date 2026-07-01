@@ -1,0 +1,102 @@
+name: Build GKI 5.10 Kernel
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      ACTIONS_RUNNER_DEBUG: true
+      ACTIONS_STEP_DEBUG: true
+      WORK_ROOT: ${{ github.workspace }}
+
+    steps:
+      - name: Checkout kernel source
+        uses: actions/checkout@v4
+        with:
+          repository: yhys233/android_gki_kernel_5.10_common
+          ref: android12-5.10-2026-04_r1_Optimize
+          path: kernel
+          fetch-depth: 1
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install --no-install-recommends -y \
+            binutils git make bc bison openssl curl zip kmod cpio flex \
+            libelf-dev libssl-dev libc6-dev device-tree-compiler \
+            ca-certificates python3 xz-utils aria2 build-essential ccache pigz \
+            parallel jq wget
+
+      - name: Download AOSP Clang r416183b
+        run: |
+          mkdir -p $HOME/clang
+          cd $HOME/clang
+          if curl -L --fail --silent --show-error \
+            https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android12-release/clang-r416183b.tar.gz \
+            | tar -xz --warning=no-unknown-keyword; then
+            echo ">>> ✅ curl 下载成功"
+          else
+            wget -qO- https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android12-release/clang-r416183b.tar.gz \
+              | tar -xz --warning=no-unknown-keyword
+            echo ">>> ✅ wget 下载成功"
+          fi
+
+      - name: Build Kernel (纯 Clang + LLD)
+        run: |
+          export PATH="$HOME/clang/bin:$PATH"
+          echo "=== 当前 PATH ==="
+          echo $PATH
+          cd kernel
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export CLANG_TRIPLE=aarch64-linux-gnu-
+          export LLVM=1
+          export LLVM_IAS=1
+
+          make clean && make mrproper
+          rm -rf out && mkdir -p out
+
+          make CC="ccache clang" -j$(nproc) O=out gki_defconfig
+          make CC="ccache clang" -j$(nproc) O=out olddefconfig prepare
+          # 固定版本无前缀横线，取消动态BUILD_NUM
+          make CC="ccache clang" LD=ld.lld LOCALVERSION="-android12-9-00288" -j$(nproc) O=out 2>&1 | tee "${WORK_ROOT}/build.log"
+   
+      - name: Package AnyKernel3
+        run: |
+          export TZ=Asia/Shanghai
+          BUILD_DATE=$(date +%Y%m%d)
+          echo "BUILD_DATE=${BUILD_DATE}" >> $GITHUB_ENV
+          ZIP_NAME="AnyKernel3-android12-5.10.252-2026-04_r1_Optimize-ztc1997-star0-yhys233-noroot-release-${BUILD_DATE}.zip"
+          git clone --depth=1 https://github.com/yhys233/AnyKernel3 AnyKernel3
+          cp kernel/out/arch/arm64/boot/Image AnyKernel3/
+          cd AnyKernel3
+          # 完全移除机型校验sed修改
+          rm -rf .git README.md patch ramdisk modules .github
+          zip -r9 ../${ZIP_NAME} .
+          echo "ZIP_NAME=${ZIP_NAME}" >> $GITHUB_ENV
+          
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: GKI5.10-${{ env.BUILD_DATE }}
+          path: |
+            ${{ env.ZIP_NAME }}
+            build.log
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.BUILD_DATE }}
+          name: GKI 5.10 ${{ env.BUILD_DATE }}
+          files: |
+            ${{ env.ZIP_NAME }}
+            build.log
+          overwrite_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

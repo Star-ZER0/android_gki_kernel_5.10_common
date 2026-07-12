@@ -1,0 +1,5 @@
+  GEN     Makefile
+  UPD     include/config/kernel.release
+"5.10.252-ztc1997-star0-dsfork-android12-9-00288-gfe5d5f902572-dirty" exceeds 64 characters
+make[1]: *** [/home/Yhys/Source/android_gki_kernel_5.10_common/Makefile:1478：include/generated/utsrelease.h] 错误 1
+make: *** [Makefile:192：__sub-make] 错误 2

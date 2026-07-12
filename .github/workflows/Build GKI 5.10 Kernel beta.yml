@@ -1,4 +1,4 @@
-name: Build GKI 5.10 Kernel
+name: Build GKI 5.10 Kernel beta
 
 on:
   workflow_dispatch:
@@ -38,26 +38,29 @@ jobs:
           path: ~/.ccache
           key: gki-ccache-510-${{ github.sha }}
 
-
       - name: Download AOSP Clang r416183b
         run: |
           mkdir -p $HOME/clang
           cd $HOME/clang
           if curl -L --fail --silent --show-error \
-            https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android12-release/clang-r416183b.tar.gz \
+            https://googlesource.com \
             | tar -xz --warning=no-unknown-keyword; then
             echo ">>> ✅ curl 下载成功"
           else
-            wget -qO- https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android12-release/clang-r416183b.tar.gz \
+            wget -qO- https://googlesource.com \
               | tar -xz --warning=no-unknown-keyword
             echo ">>> ✅ wget 下载成功"
           fi
 
-      - name: Build Kernel (纯 Clang + LLD)
+      - name: Build Kernel (纯 Clang + LLD + 官方符号提取规范)
         run: |
           export PATH="$HOME/clang/bin:$PATH"
           echo "=== 当前 PATH ==="
           echo $PATH
+          
+          # 1. 定向克隆谷歌官方对应的 android12-5.10 KMI 自动化工具链
+          git clone -b android12-5.10 --depth=1 https://googlesource.com $HOME/build_tools
+
           cd kernel
           export ARCH=arm64
           export SUBARCH=arm64
@@ -69,21 +72,56 @@ jobs:
           make clean && make mrproper
           rm -rf out && mkdir -p out
 
+          # 2. 载入原始配置并激进激活内核原生的符号裁剪开关
           make CC="ccache clang" -j$(nproc) O=out gki_defconfig
-          make CC="ccache clang" -j$(nproc) O=out olddefconfig prepare
-          # 固定版本无前缀横线，取消动态BUILD_NUM
-          make CC="ccache clang" LD=ld.lld LOCALVERSION="-android12-9-00288" -j$(nproc) O=out 2>&1 | tee "${WORK_ROOT}/build.log"
+          echo "CONFIG_TRIM_UNUSED_KSYMS=y" >> out/.config
           
+          # 3. 基础准备：使内核先在编译树内吐出包含基础符号依赖的 Module.symvers
+          make CC="ccache clang" -j$(nproc) O=out olddefconfig prepare
+          make CC="ccache clang" -j$(nproc) O=out modules_prepare
+          
+          # 4. 执行官方工具链中的 Python 脚本，扫描编译输出树中的新驱动与功能符号
+          mkdir -p android
+          python3 $HOME/build_tools/kernel/abi/extract_symbols.py out/ -o out/kernel_whitelist.tmp
+          
+          # 5. 格式规整化：严格对齐官方要求的具有 [abi_symbol_list] 头的 raw 白名单格式
+          echo "[abi_symbol_list]" > android/abi_symbollist.raw
+          grep -E '^[a-zA-Z_][a-zA-Z0-9_]*$' out/kernel_whitelist.tmp >> android/abi_symbollist.raw
+          
+          # 6. 为底层内核原生提供一份去掉 INI 头的纯净 txt 符号副本，防止由于中括号导致内核解析报错
+          grep -E '^[a-zA-Z_][a-zA-Z0-9_]*$' out/kernel_whitelist.tmp > out/kernel_whitelist_clean.txt
+          echo "CONFIG_UNUSED_KSYMS_WHITELIST=\"out/kernel_whitelist_clean.txt\"" >> out/.config
+          
+          # 7. 重新运行 olddefconfig，促使内核彻底砍掉所有死代码（体积精准缩减 0.5-0.8MB）
+          make CC="ccache clang" -j$(nproc) O=out olddefconfig
+          
+          # 8. 终极正式编译
+          make CC="ccache clang" LD=ld.lld LOCALVERSION="-android12-9-00288" -j$(nproc) O=out 2>&1 | tee "${WORK_ROOT}/build.log"
+
+      - name: Automatically push official whitelist back to repo
+        run: |
+          cd kernel
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Actions"
+          # 检查生成的官方格式白名单是否有数据更新
+          if git status --porcelain android/abi_symbollist.raw | grep -q .; then
+            git add android/abi_symbollist.raw
+            git commit -m "chore: auto update compliant KMI symbol list by official generator"
+            git push origin HEAD:android12-5.10-2026-04_r1
+            echo ">>> 🌟 符合谷歌官方标准的全新白名单文件已成功自动上传到你的仓库内容里！"
+          else
+            echo ">>> ℹ️ 符号树无变动，跳过上传"
+          fi
+
       - name: Package AnyKernel3
         run: |
           export TZ=Asia/Shanghai
           BUILD_DATE=$(date +%Y%m%d)
           echo "BUILD_DATE=${BUILD_DATE}" >> $GITHUB_ENV
           ZIP_NAME="AnyKernel3-android12-5.10.252-2026-04_r1_Optimize-ztc1997-star0-yhys233-noroot-release-${BUILD_DATE}.zip"
-          git clone --depth=1 https://github.com/yhys233/AnyKernel3 AnyKernel3
+          git clone --depth=1 https://github.com AnyKernel3
           cp kernel/out/arch/arm64/boot/Image AnyKernel3/
           cd AnyKernel3
-          # 完全移除机型校验sed修改
           rm -rf .git README.md patch ramdisk modules .github
           zip -r9 ../${ZIP_NAME} .
           echo "ZIP_NAME=${ZIP_NAME}" >> $GITHUB_ENV

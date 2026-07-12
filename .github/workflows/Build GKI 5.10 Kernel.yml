@@ -73,9 +73,7 @@ jobs:
           make CC="ccache clang" -j$(nproc) O=out olddefconfig prepare
           # 固定版本无前缀横线，取消动态BUILD_NUM
           make CC="ccache clang" LD=ld.lld LOCALVERSION="-android12-9-00288" -j$(nproc) O=out 2>&1 | tee "${WORK_ROOT}/build.log"
-          # 导出本次编译生成的符号白名单文件，放到仓库根目录，用于后续固化私有KSYMS白名单
-          cp out/android12-5.10/common/abi_symbollist.raw $WORK_ROOT/
-   
+          
       - name: Package AnyKernel3
         run: |
           export TZ=Asia/Shanghai
@@ -97,8 +95,7 @@ jobs:
           path: |
             ${{ env.ZIP_NAME }}
             build.log
-            abi_symbollist.raw
-
+            
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -107,7 +104,6 @@ jobs:
           files: |
             ${{ env.ZIP_NAME }}
             build.log
-            abi_symbollist.raw
           overwrite_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

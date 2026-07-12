@@ -3,7 +3,7 @@ set -euo pipefail
 KERNEL_DIR="$PWD"
 CLANG_PATH="/opt/clang-r416183b"
 WORK_ROOT="$PWD"
-AK3_ROOT="~/Source/AnyKernel3"
+AK3_ROOT="/~/Source/AnyKernel3"
 export TZ=Asia/Shanghai
 
 # 安装依赖
